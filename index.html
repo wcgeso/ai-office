@@ -67,11 +67,34 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:
 #card .chip .av{width:22px;height:22px;border-radius:50%;object-fit:cover}
 #card .chip .ini{font-size:10px}
 #card .arrow{color:var(--muted)}
+/* v4：狀態點／狀態文字／最後更新 */
+:root{--st-working:#5E9E6A;--st-resting:#E0A33E;--st-offline:#B3AAA0}
+.avw{position:relative;display:inline-flex;flex:none}
+.sd{display:none;position:absolute;right:-2px;bottom:-2px;width:9px;height:9px;border-radius:50%;border:2px solid var(--tag);background:var(--st-offline)}
+.tag[data-st="working"] .sd,.tag[data-st="resting"] .sd,.tag[data-st="offline"] .sd{display:block}
+.tag[data-st="working"] .sd{background:var(--st-working)}
+.tag[data-st="resting"] .sd{background:var(--st-resting)}
+.tag[data-st="offline"] .avw{opacity:.55}
+.tag[data-st="resting"] .stt{color:#B87F22}
+.tag[data-st="working"] .stt{color:#4B8A57}
+.tag .stt{font-weight:600}
+#card .stline{display:flex;align-items:center;gap:7px;font-size:15px;margin:0 0 14px}
+#card .stline .sd{display:block;position:static;width:10px;height:10px;border:0}
+#card .stline[data-st="working"] .sd{background:var(--st-working)}
+#card .stline[data-st="resting"] .sd{background:var(--st-resting)}
+#card .stline .muted{color:var(--muted);font-size:13px}
+#hud .live{margin:6px 0 0;font-size:11.5px;line-height:1.35;color:var(--muted);display:flex;gap:6px;align-items:flex-start}
+#hud .live::before{content:"";flex:none;width:8px;height:8px;border-radius:50%;margin-top:3px;background:var(--st-offline)}
+#hud .live.real::before{background:var(--st-working);box-shadow:0 0 0 3px rgba(94,158,106,.18)}
+#hud .live.demo{color:#A8641E;font-weight:700}
+#hud .live.demo::before{background:var(--st-resting)}
 #loading{position:fixed;inset:0;display:grid;place-items:center;font-size:15px;color:var(--muted);background:var(--bg);transition:opacity .5s}
 @media (max-width:600px){
   .tag{gap:3px;padding:2px 6px 2px 5px}
   .tag::before{width:3px}
   .tag .av,.tag.boss .av{width:17px;height:17px}
+  .sd{width:7px;height:7px;border-width:1.5px;right:-2px;bottom:-2px}
+  #hud .live{font-size:10.5px;margin-top:4px}
   .tag small{display:none}
   .tag b,.tag.boss b{font-size:10px}
   .crown{font-size:8px;margin-left:1px}
@@ -95,7 +118,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:
 <div id="hud">
   <button class="fold" id="fold" aria-label="收合">－</button>
   <h1>家慶的 AI 夥伴辦公室</h1>
-  <div class="sub">組織圖 v3・點人看介紹與回報路線</div>
+  <div class="live" id="live"></div>
+  <div class="sub">組織圖 v4・點人看介紹、回報路線與狀態</div>
   <ul>
     <li><i style="background:#B8893E"></i>老闆</li>
     <li><i style="background:#C98E6B"></i>秘書</li>
@@ -103,6 +127,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:
     <li><i style="background:#6F9BB0"></i>產品與技術</li>
     <li><i style="background:#C7A64B"></i>資訊</li>
     <li><i class="dash"></i>虛線＝對接</li>
+    <li><i style="background:var(--st-working)"></i>工作中</li>
+    <li><i style="background:var(--st-resting)"></i>休息中</li>
   </ul>
   <div class="hint">拖曳旋轉・滾輪／雙指縮放・右鍵／雙指拖曳平移</div>
 </div>
@@ -4581,7 +4607,7 @@ void main() {
 
   // ---------- 家具 ----------
   function chair(parent, exec){
-    const g = new THREE.Group(); parent.add(g);
+    const g = new THREE.Group(); parent.add(g); g.userData.seating = true;
     const backTop = exec ? 1.15 : 0.85, w = exec ? 0.6 : 0.5;
     box(w, 0.08, 0.5, M_FAB, 0, 0.415, 0, g);
     box(w, backTop - 0.45, 0.06, M_OAK, 0, 0.45 + (backTop - 0.45)/2, -0.25, g);
@@ -4627,10 +4653,13 @@ void main() {
     const g = new THREE.Group(); parent.add(g);
     const shirt = mat(m.shirt, { roughness:0.85 });
     const torso = new THREE.Mesh(G.torso, shirt); torso.position.y = 0.68; torso.scale.set(1.05, 1, 0.9); torso.castShadow = true; g.add(torso);
+    const legs = [], arms = [];
     [-1, 1].forEach(s => {
       const leg = new THREE.Mesh(G.leg, mat(m.id === 'jiaqing' ? 0x4A4540 : 0x8C8279, { roughness:0.85 })); leg.rotation.x = PI/2; leg.position.set(s * 0.1, 0.5, 0.2); g.add(leg);
       const arm = new THREE.Mesh(G.arm, shirt); arm.position.set(s * 0.26, 0.72, 0.13); arm.rotation.x = 1.0; arm.rotation.z = s * -0.15; arm.castShadow = true; g.add(arm);
+      leg.userData.s = s; arm.userData.s = s; legs.push(leg); arms.push(arm);
     });
+    g.userData.legs = legs; g.userData.arms = arms;
     const head = new THREE.Mesh(G.head, M_SKIN); head.position.y = HEAD_Y; head.castShadow = true; g.add(head);
     const hair = new THREE.Mesh(G.hair, M_HAIR); hair.position.y = HEAD_Y + 0.01; hair.rotation.x = -0.42; g.add(hair);
     const fringe = new THREE.Mesh(G.fringe, M_HAIR); fringe.position.set(0, HEAD_Y + 0.19, 0.12); fringe.rotation.x = -0.65; g.add(fringe);
@@ -4664,9 +4693,10 @@ void main() {
   const pickables = [], seatObj = {};
   M.forEach(m => {
     const root = item(m.x, m.z, m.ry, m.y0);
+    const walker = item(m.x, m.z, m.ry, m.y0); walker.userData.walker = true;   // v4：人物、名牌、點擊區放在可移動的群組
     const isBoss = m.id === 'jiaqing', isChloe = m.id === 'chloe', isTech = !m.desk;
     chair(root, isBoss);
-    const p = person(m, root);
+    const p = person(m, walker);
     const D = 0.55;
     if (!isTech) deskStd(root, m.desk[0], m.desk[1]);
     if (isBoss){
@@ -4696,28 +4726,30 @@ void main() {
       if (m.line === 'mkt') papers(root, 0.2, D - 0.05, 0.3);
     }
     const hit = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.45, 0.8), new THREE.MeshBasicMaterial({ visible:false }));
-    hit.position.set(0, 0.73, 0.05); hit.userData.id = m.id; root.add(hit); pickables.push(hit);
+    hit.position.set(0, 0.73, 0.05); hit.userData.id = m.id; walker.add(hit); pickables.push(hit);
 
     const wrap = document.createElement('div'); wrap.className = 'tagw';
     const el = document.createElement('div');
     el.className = 'tag' + (isBoss ? ' boss' : '');
     el.style.setProperty('--c', m.color);
-    el.innerHTML = avatarHTML(m, 'av') + `<span class="t"><b>${m.name}${isBoss ? '<span class="crown">👑</span>' : ''}</b><small>${m.role}</small></span>`;
+    el.innerHTML = `<span class="avw">${avatarHTML(m, 'av')}<i class="sd"></i></span>` + `<span class="t"><b>${m.name}${isBoss ? '<span class="crown">👑</span>' : ''}</b><small>${m.role}<span class="stt"></span></small></span>`;
     el.addEventListener('pointerdown', e => e.stopPropagation());
     el.addEventListener('click', e => { e.stopPropagation(); select(m.id); });
     const lead = document.createElement('i'); lead.className = 'lead'; lead.style.setProperty('--c', m.color); wrap.appendChild(lead);
     wrap.appendChild(el);
     const label = new CSS2DObject(wrap);
     label.center.set(0.5, 1);
-    root.add(label);
-    seatObj[m.id] = { root, person:p, label, el, wrap, lead, off:{ x:0, y:0 }, head:new THREE.Vector3(), face:new THREE.Vector3() };
+    walker.add(label);
+    const seat = { key:'seat', x:P(m.x), z:P(m.z), y:m.y0, ry:m.ry, sit:true, lift:0 };
+    seatObj[m.id] = { root, walker, seat, person:p, label, el, wrap, lead, off:{ x:0, y:0 }, head:new THREE.Vector3(), face:new THREE.Vector3(),
+      mv:{ state:null, since:null, spot:seat, path:[], pose:0, hidden:false, phase:0, arm:1.0 } };
   });
   // 名牌高度：頭頂上方 0.15（世界單位），人物縮放後重新算
   function placeLabels(){
     scene.updateMatrixWorld(true);
     for (const id in seatObj){
       const s = seatObj[id], ps = s.person.scale.y;
-      s.label.position.set(0, (HEAD_Y + HEAD_R) * ps + LABEL_GAP / F, 0);
+      s.label.position.set(0, s.person.position.y + (HEAD_Y + HEAD_R) * ps + LABEL_GAP / F, 0);
       s.person.userData.head.getWorldPosition(s.face);
       s.head.copy(s.face); s.head.y += HEAD_R * F * ps + 0.3;
     }
@@ -4776,7 +4808,7 @@ void main() {
 
   // ---------- 沙發休息區 ----------
   (function lounge(){
-    const g = item(2.6, 0.0);
+    const g = item(2.6, 0.0); g.userData.seating = true;
     const M_SOFA = mat(C.sofa, { roughness:0.9 });
     box(2.0, 0.24, 0.85, M_SOFA, 0, 0.26, 0, g);
     [-0.45, 0.45].forEach(x => box(0.88, 0.12, 0.62, M_SOFA, x, 0.44, 0.08, g));
@@ -4801,7 +4833,7 @@ void main() {
     plant(0.05, -0.05, 0.32, 0.745, t);
     mug(t, -0.3, 0.15, 0.78); mug(t, 0.28, 0.22, 0.78);
     [45, 135, 225, 315].forEach(deg => {
-      const a = deg * PI / 180, g = grp(Math.cos(a) * 0.95, 0, Math.sin(a) * 0.95, 0, t); g.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a));
+      const a = deg * PI / 180, g = grp(Math.cos(a) * 0.95, 0, Math.sin(a) * 0.95, 0, t); g.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a)); g.userData.seating = true;
       box(0.56, 0.12, 0.5, M_FAB, 0, 0.42, 0, g);
       const back = box(0.56, 0.42, 0.1, M_FAB, 0, 0.68, -0.22, g); back.rotation.x = -0.15;
       [-1, 1].forEach(s => box(0.08, 0.16, 0.42, M_FAB, s * 0.27, 0.54, -0.02, g));
@@ -4888,7 +4920,8 @@ void main() {
     card.style.setProperty('--c1', m.color);
     card.innerHTML = `<div class="hd">${avatarHTML(m, 'big')}<div><h2>${m.name}</h2><span class="role">${m.role}</span></div>
       <button class="x" aria-label="關閉">×</button></div>
-      <div class="bd"><div class="sec-t">職責</div><p>${m.duty}</p>${relHTML(m)}</div>`;
+      <div class="bd"><div id="cardst"></div><div class="sec-t">職責</div><p>${m.duty}</p>${relHTML(m)}</div>`;
+    renderCardStatus();
     card.querySelector('.x').onclick = deselect;
     card.querySelectorAll('.chip').forEach(c => c.onclick = () => { if (c.dataset.id !== id) select(c.dataset.id); });
     card.classList.add('on');
@@ -5047,11 +5080,26 @@ void main() {
       dashed:!!dashed, dashSize:0.15, gapSize:0.1, worldUnits:false });
     lm.resolution.set(innerWidth, innerHeight); lineMats.push(lm);
     const ln = new Line2(geo, lm); ln.computeLineDistances(); ln.renderOrder = 4; scene.add(ln);
-    const rec = { from, to, curve, mat:lm, line:ln, target:0.18 }; lines.push(rec); return rec;
+    ln.frustumCulled = false;
+    const rec = { from, to, curve, mat:lm, line:ln, geo, dashed:!!dashed, target:0.18 }; lines.push(rec); return rec;
   }
   PARTNERS.forEach(id => addLine(id, 'chloe', byId[id].color));
   addLine('chloe', 'jiaqing', LINE.boss);
   addLine('ray', 'tony', LINE.mkt, true);
+  // v4：有人走動時，就地更新連線（不重建 buffer）
+  const LP = Array.from({ length:49 }, () => new THREE.Vector3());
+  function refreshLine(rec){
+    rec.curve = arc(seatObj[rec.from].head, seatObj[rec.to].head);
+    for (let i = 0; i <= 48; i++) rec.curve.getPoint(i / 48, LP[i]);
+    const st = rec.geo.attributes.instanceStart.data, a = st.array;
+    for (let i = 0; i < 48; i++){ const p = LP[i], q = LP[i+1]; a[i*6] = p.x; a[i*6+1] = p.y; a[i*6+2] = p.z; a[i*6+3] = q.x; a[i*6+4] = q.y; a[i*6+5] = q.z; }
+    st.needsUpdate = true;
+    if (rec.dashed && rec.geo.attributes.instanceDistanceStart){
+      const ds = rec.geo.attributes.instanceDistanceStart.data, d = ds.array; let acc = 0;
+      for (let i = 0; i < 48; i++){ d[i*2] = acc; acc += LP[i].distanceTo(LP[i+1]); d[i*2+1] = acc; }
+      ds.needsUpdate = true;
+    }
+  }
   const dot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), new THREE.MeshBasicMaterial({ color:0xFFF8EC }));
   const dotHalo = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), new THREE.MeshBasicMaterial({ color:0xFFE7C2, transparent:true, opacity:0.45, depthWrite:false }));
   dot.add(dotHalo); dot.visible = false; scene.add(dot);
@@ -5168,12 +5216,14 @@ void main() {
     const placed = [], pad = 3;
     // 先把每個人的臉、遊戲螢幕、新聞電視放進「不能蓋」清單
     for (const id in seatObj){
-      const s = seatObj[id]; s.person.userData.head.getWorldPosition(tagV);
+      const s = seatObj[id]; if (!s.person.visible) continue; s.person.userData.head.getWorldPosition(tagV);
       const top = tagV.clone(); top.y += HEAD_R * F * MOBILE_BOOST; tagV.project(camera); top.project(camera);
       const [cx, cy] = toPx(tagV), [, ty] = toPx(top), r = Math.max(4, cy - ty) * 0.85;
       placed.push({ l:cx - r * 0.8, r:cx + r * 0.8, t:cy - r * 0.45, b:cy + r * 0.8 });   // 名牌不蓋任何人的臉（含自己）
     }
     OBSTACLES.forEach(o => { let l = 1e9, r = -1e9, t = 1e9, b = -1e9; o.pts.forEach(p => { tagV.set(p[0], p[1], p[2]); o.obj.localToWorld(tagV); tagV.project(camera); const [x, y] = toPx(tagV); l = Math.min(l, x); r = Math.max(r, x); t = Math.min(t, y); b = Math.max(b, y); }); placed.push({ l, r, t, b }); });
+    const wx = id => seatObj[id].walker.position.x + seatObj[id].walker.position.z;
+    ORDER.sort((a, b) => (a === 'jiaqing' ? -1 : b === 'jiaqing' ? 1 : wx(b) - wx(a)));
     for (const id of ORDER){
       const s = seatObj[id];
       if (s.wrap.style.display === 'none') continue;
@@ -5204,11 +5254,284 @@ void main() {
     }
   }
 
+  // =====================================================================
+  // v4：即時狀態（status.json）＋走動
+  //   status.json：{ updated, members:{ <id 或名字>:{ state:'working'|'resting'|'offline', since } } }
+  //   沒有資料、讀不到、太舊 → 大家都坐在座位上，不做假動作。
+  //   ?demo=1 → 示範模式（畫面上標示「示範模式（非真實狀態）」）
+  // =====================================================================
+  const TRACKED = M.map(m => m.id).filter(id => id !== 'jiaqing');   // 家慶是本人，沒有可讀的狀態來源
+  const STATE_TXT = { working:'工作中', resting:'休息中', offline:'離線' };
+  const POLL_MS = 30000, STALE_MIN = 90;
+  const qs = new URLSearchParams(location.search), DEMO = qs.get('demo') === '1';
+  const NAME2ID = {}; M.forEach(m => { NAME2ID[m.id] = m.id; NAME2ID[m.name.toLowerCase()] = m.id; });
+  const live = { mode:'none', updated:null, err:null, stale:false };
+
+  // ---------- 走路用格子地圖：地上 0.12~1.3 m 高的家具都算障礙，外擴半個人寬 ----------
+  const CELL = 0.1, GN = Math.ceil(2 * H / CELL), RAD = 0.17;
+  const grid = new Uint8Array(GN * GN), hard = new Uint8Array(GN * GN), comp = new Int32Array(GN * GN).fill(-1);
+  let MAIN = 0;
+  const gi = (x, z) => [Math.floor((x + H) / CELL), Math.floor((z + H) / CELL)];
+  const gc = (i, j) => [-H + (i + 0.5) * CELL, -H + (j + 0.5) * CELL];
+  const inG = (i, j) => i >= 0 && j >= 0 && i < GN && j < GN;
+  const freeC = (i, j) => inG(i, j) && !grid[j * GN + i];
+  const mainC = (i, j) => freeC(i, j) && comp[j * GN + i] === MAIN;
+  function buildGrid(){
+    scene.updateMatrixWorld(true);
+    const bb = new THREE.Box3(), up = (o, k) => { while (o){ if (o.userData && o.userData[k]) return true; o = o.parent; } return false; };
+    const soft = new Set([...leafMats, M_LEAF1, M_LEAF2]);   // 植物葉子可以擦身而過，只算盆子
+    const mark = (arr, b, r) => { const [i0, j0] = gi(b.min.x - r, b.min.z - r), [i1, j1] = gi(b.max.x + r, b.max.z + r);
+      for (let j = Math.max(0, j0); j <= Math.min(GN - 1, j1); j++) for (let i = Math.max(0, i0); i <= Math.min(GN - 1, i1); i++) arr[j * GN + i] = 1; };
+    scene.traverse(o => {
+      if (!o.isMesh || o.isLine2 || o.type === 'Line2' || up(o, 'walker')) return;
+      if (o.material && !Array.isArray(o.material) && (o.material.visible === false || soft.has(o.material))) return;
+      bb.setFromObject(o);
+      if (bb.max.y < 0.12 || bb.min.y > 1.3) return;
+      mark(grid, bb, RAD);
+      if (!up(o, 'seating')) mark(hard, bb, 0.03);   // 「硬」障礙：桌子、牆（不含椅子／沙發）→ 起身離座時不能穿過
+    });
+    for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++){ const [x, z] = gc(i, j);
+      if (x + z > CUT - RAD * 1.5 || x < -H + RAD || z < -H + RAD || x > H - RAD || z > H - RAD) grid[j * GN + i] = 1; }
+    // 連通區：只用最大的那一塊（小縫隙走不出去）
+    let n = 0, best = 0, bestN = -1;
+    for (let k = 0; k < GN * GN; k++){ if (grid[k] || comp[k] >= 0) continue;
+      const q = [k]; comp[k] = n; let c = 0;
+      while (q.length){ const u = q.pop(); c++; const i = u % GN, j = (u / GN) | 0;
+        [[1,0],[-1,0],[0,1],[0,-1]].forEach(([di, dj]) => { const a = i + di, b = j + dj; if (freeC(a, b) && comp[b * GN + a] < 0){ comp[b * GN + a] = n; q.push(b * GN + a); } }); }
+      if (c > bestN){ bestN = c; best = n; } n++; }
+    MAIN = best;
+  }
+  function hardLos(a, b){
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / (CELL * 0.4));
+    for (let k = 1; k <= n; k++){ const t = k / Math.max(1, n), [i, j] = gi(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t); if (!inG(i, j) || hard[j * GN + i]) return false; }
+    return true;
+  }
+  // 從座位（椅子、沙發上）找最近、而且中間不隔著桌子的可走格子
+  function nearestFree(x, z){
+    const [si, sj] = gi(x, z); if (mainC(si, sj)) return [si, sj];
+    let fb = null, fbd = 1e9;
+    for (let r = 1; r < 40; r++){ let best = null, bd = 1e9;
+      for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++){ if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const i = si + di, j = sj + dj; if (!mainC(i, j)) continue; const [cx, cz] = gc(i, j), d = Math.hypot(cx - x, cz - z);
+        if (d < fbd){ fbd = d; fb = [i, j]; }
+        if (d < bd && hardLos([x, z], [cx, cz])){ bd = d; best = [i, j]; } }
+      if (best) return best; }
+    return fb || [si, sj];
+  }
+  function los(a, b){   // 兩個世界座標點之間是否全是空格
+    const d = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(d / (CELL * 0.4));
+    for (let k = 0; k <= n; k++){ const t = k / Math.max(1, n), [i, j] = gi(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t); if (!freeC(i, j)) return false; }
+    return true;
+  }
+  function astar(s, g){
+    const N = GN * GN, gs = new Float32Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+    const open = [], h = (i, j) => { const dx = Math.abs(i - g[0]), dy = Math.abs(j - g[1]); return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy); };
+    const push = (f, k) => { open.push([f, k]); let c = open.length - 1; while (c > 0){ const p = (c - 1) >> 1; if (open[p][0] <= open[c][0]) break; [open[p], open[c]] = [open[c], open[p]]; c = p; } };
+    const pop = () => { const top = open[0], last = open.pop(); if (open.length){ open[0] = last; let c = 0; for (;;){ const l = 2*c+1, r = l+1; let m = c; if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r; if (m === c) break; [open[m], open[c]] = [open[c], open[m]]; c = m; } } return top; };
+    const sk = s[1] * GN + s[0], gk = g[1] * GN + g[0]; gs[sk] = 0; push(h(s[0], s[1]), sk);
+    while (open.length){
+      const [, k] = pop(); if (closed[k]) continue; closed[k] = 1; if (k === gk) break;
+      const i = k % GN, j = (k / GN) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++){ if (!di && !dj) continue;
+        const ni = i + di, nj = j + dj; if (!freeC(ni, nj)) continue;
+        if (di && dj && (!freeC(i + di, j) || !freeC(i, j + dj))) continue;   // 不切牆角
+        const nk = nj * GN + ni, ng = gs[k] + (di && dj ? Math.SQRT2 : 1);
+        if (ng < gs[nk]){ gs[nk] = ng; from[nk] = k; push(ng + h(ni, nj), nk); } }
+    }
+    if (from[gk] < 0 && gk !== sk) return null;
+    const out = []; for (let k = gk; k >= 0; k = from[k]){ const [x, z] = gc(k % GN, (k / GN) | 0); out.push([x, z]); if (k === sk) break; }
+    return out.reverse();
+  }
+  function planPath(x0, z0, x1, z1){
+    const s = nearestFree(x0, z0), g = nearestFree(x1, z1);
+    const mid = astar(s, g); if (!mid) return [[x1, z1]];
+    // 拉直：能直線走到就跳過中間點
+    const pts = [mid[0]]; let k = 0;
+    while (k < mid.length - 1){ let far = k + 1; for (let m = mid.length - 1; m > k + 1; m--) if (los(mid[k], mid[m])){ far = m; break; } pts.push(mid[far]); k = far; }
+    const out = [];
+    const [sx, sz] = gc(s[0], s[1]); if (Math.hypot(sx - x0, sz - z0) > 0.05) out.push([sx, sz]);   // 先從椅子退出來
+    pts.slice(1).forEach(p => out.push(p));
+    out.push([x1, z1]);
+    return out;
+  }
+
+  // ---------- 休息位置（沿用 Iris 場景裡現有的沙發、會議椅、茶几旁；依「臉朝鏡頭」排優先順序） ----------
+  const SOFA = [P(2.6), P(0.0)], CTAB = [P(2.6), P(1.3)], MTAB = [P(-0.4), P(3.6)];
+  const face = (x, z, tx, tz) => Math.atan2(tx - x, tz - z);
+  const REST = [];
+  [-0.45, 0.45].forEach((lx, i) => REST.push({ key:'sofa' + i, x:SOFA[0] + lx * F, z:SOFA[1] + 0.06 * F, y:0, ry:0, sit:true, lift:0.045, relax:true }));
+  [225, 135, 315].forEach(deg => { const a = deg * PI / 180; REST.push({ key:'mt' + deg, x:MTAB[0] + Math.cos(a) * 0.95 * F, z:MTAB[1] + Math.sin(a) * 0.95 * F, y:0, ry:Math.atan2(-Math.cos(a), -Math.sin(a)), sit:true, lift:0.025, relax:true }); });
+  [[1.15, 1.75], [3.05, 1.8], [2.15, 2.25]].forEach(([x, z], i) => REST.push({ key:'tea' + i, x, z, y:0, ry:face(x, z, CTAB[0], CTAB[1]), sit:false, lift:0, relax:true }));
+  REST.push({ key:'mt45', x:MTAB[0] + Math.cos(Q) * 0.95 * F, z:MTAB[1] + Math.sin(Q) * 0.95 * F, y:0, ry:Math.atan2(-Math.cos(Q), -Math.sin(Q)), sit:true, lift:0.025, relax:true });
+  const DOOR = { key:'door', x:-H + 0.45, z:DZ, y:0, ry:-PI/2, sit:false, lift:0 };
+  const taken = {};   // spot key → id
+  function claimRest(id){
+    for (const r of REST){ if (taken[r.key] === id) return r; }
+    for (const r of REST){ if (!taken[r.key]){ taken[r.key] = id; return r; } }
+    return null;
+  }
+  const release = id => { for (const k in taken) if (taken[k] === id) delete taken[k]; };
+
+  function goTo(id, spot){
+    const s = seatObj[id], mv = s.mv, w = s.walker.position;
+    if (mv.spot === spot && !mv.path.length && !mv.hidden) return;
+    if (mv.hidden){   // 從門口走進來
+      s.walker.position.set(DOOR.x, 0, DOOR.z); s.walker.rotation.y = PI/2; s.person.visible = true; mv.hidden = false; mv.pose = 1;
+    }
+    mv.spot = spot;
+    mv.path = (Math.hypot(w.x - spot.x, w.z - spot.z) < 0.02) ? [] : planPath(w.x, w.z, spot.x, spot.z);
+  }
+  function setState(id, state, since){
+    const s = seatObj[id]; if (!s) return; const mv = s.mv;
+    const changed = mv.state !== state;
+    mv.state = state; mv.since = since || null;
+    if (changed){
+      if (state === 'resting'){ const r = claimRest(id); goTo(id, r || s.seat); if (!r) mv.state = 'resting'; }
+      else { release(id); if (state === 'offline') goTo(id, DOOR); else goTo(id, s.seat); }
+    }
+    renderTag(id);
+    if (current === id) renderCardStatus();
+  }
+  function clearStates(){ TRACKED.forEach(id => setState(id, null, null)); }
+
+  // ---------- 每一幀：走路、坐下、站起來 ----------
+  const SPEED = 1.25, lerpAng = (a, b, k) => { let d = ((b - a + PI) % (2 * PI) + 2 * PI) % (2 * PI) - PI; return a + d * k; };
+  let anyMoving = false;
+  function stepWalkers(dt, t){
+    anyMoving = false;
+    for (const id of TRACKED){
+      const s = seatObj[id], mv = s.mv, w = s.walker, p = s.person;
+      if (mv.hidden) continue;
+      const moving = mv.path.length > 0;
+      const wantStand = moving || !mv.spot.sit;
+      const moved0 = w.position.x + w.position.z * 7.3 + mv.pose;
+      // 站起來 / 坐下
+      mv.pose = THREE.MathUtils.clamp(mv.pose + (wantStand ? 1 : -1) * dt / 0.45, 0, 1);
+      if (moving && mv.pose >= 1){
+        const [tx, tz] = mv.path[0], dx = tx - w.position.x, dz = tz - w.position.z, d = Math.hypot(dx, dz), step = SPEED * dt;
+        const yaw = Math.atan2(dx, dz); w.rotation.y = lerpAng(w.rotation.y, yaw, Math.min(1, dt * 10));
+        if (d <= step){ w.position.x = tx; w.position.z = tz; mv.path.shift(); }
+        else { w.position.x += dx / d * step; w.position.z += dz / d * step; }
+        w.position.y += ((mv.path.length ? 0 : mv.spot.y) - w.position.y) * Math.min(1, dt * 6);
+        mv.phase += dt * 9;
+        if (!mv.path.length && mv.spot === DOOR){ p.visible = false; mv.hidden = true;   // 走出門＝離線：人不見，名牌回座位
+          w.position.set(s.seat.x, s.seat.y, s.seat.z); w.rotation.y = s.seat.ry; mv.pose = 0; mv.spot = s.seat; }
+      } else if (!moving){
+        w.rotation.y = lerpAng(w.rotation.y, mv.spot.ry, Math.min(1, dt * 6));
+        w.position.y += (mv.spot.y - w.position.y) * Math.min(1, dt * 6);
+        mv.phase *= Math.max(0, 1 - dt * 8);
+      }
+      // 姿勢：腿（坐＝水平、站＝垂直擺動）、手（打字／放鬆／擺手）
+      const k = mv.pose, sw = Math.sin(mv.phase) * (moving ? 1 : 0), armSit = mv.spot.relax ? 0.35 : 1.0;
+      mv.arm += (armSit - mv.arm) * Math.min(1, dt * 4);
+      p.userData.legs.forEach(l => { const sg = l.userData.s;
+        l.rotation.x = PI/2 * (1 - k) + (sg * sw * 0.55) * k; l.position.y = 0.5 - 0.2 * k; l.position.z = 0.2 * (1 - k); });
+      p.userData.arms.forEach(a => { const sg = a.userData.s;
+        a.rotation.x = mv.arm * (1 - k) + (-sg * sw * 0.5) * k; a.position.z = 0.13 * (1 - k); });
+      const lift = mv.spot.sit ? (mv.spot.lift || 0) : 0;
+      p.position.y = lift * (1 - k) - 0.09 * k + (moving ? Math.abs(Math.sin(mv.phase)) * 0.03 * k : 0);
+      s.label.position.y = p.position.y + (HEAD_Y + HEAD_R) * p.scale.y + LABEL_GAP / F;
+      if (Math.abs(moved0 - (w.position.x + w.position.z * 7.3 + mv.pose)) > 1e-5){ s.dirty = true; anyMoving = true; }
+    }
+    // 名牌錨點、連線跟著人走
+    let touched = false;
+    for (const id of TRACKED){ const s = seatObj[id]; if (!s.dirty) continue; touched = true;
+      s.walker.updateMatrixWorld(true); s.person.userData.head.getWorldPosition(s.face); s.head.copy(s.face); s.head.y += HEAD_R * F * s.person.scale.y + 0.3; }
+    if (touched){ lines.forEach(l => { if (seatObj[l.from].dirty || seatObj[l.to].dirty) refreshLine(l); }); TRACKED.forEach(id => seatObj[id].dirty = false); }
+  }
+
+  // ---------- 名牌上的狀態點、卡片、左上「最後更新」 ----------
+  const hhmm = iso => { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return '';
+    const o = { timeZone:'Asia/Taipei', hour:'2-digit', minute:'2-digit', hour12:false }, today = new Date().toLocaleDateString('zh-TW', { timeZone:'Asia/Taipei' });
+    const t = d.toLocaleTimeString('zh-TW', o); return d.toLocaleDateString('zh-TW', { timeZone:'Asia/Taipei' }) === today ? t : d.toLocaleDateString('zh-TW', { timeZone:'Asia/Taipei', month:'numeric', day:'numeric' }) + ' ' + t; };
+  function renderTag(id){
+    const s = seatObj[id], st = s.mv.state;
+    s.el.dataset.st = st || '';
+    s.el.querySelector('.stt').textContent = st ? '・' + STATE_TXT[st] : '';
+    s.el.title = st ? STATE_TXT[st] : '';
+  }
+  function renderCardStatus(){
+    const box = document.getElementById('cardst'); if (!box || !current) return;
+    const s = seatObj[current], st = s && s.mv.state;
+    if (current === 'jiaqing' || !st){ box.innerHTML = ''; return; }
+    box.innerHTML = `<div class="sec-t">現在狀態${live.mode === 'demo' ? '（示範）' : ''}</div><div class="stline" data-st="${st}"><i class="sd"></i><b>${STATE_TXT[st]}</b>${s.mv.since ? `<span class="muted">・${hhmm(s.mv.since)} 起</span>` : ''}</div>`;
+  }
+  const liveEl = document.getElementById('live');
+  function renderLive(){
+    if (!liveEl) return;
+    let txt = '', cls = '';
+    if (live.mode === 'demo'){ txt = `示範模式（非真實狀態）・最後更新 ${hhmm(live.updated)}`; cls = 'demo'; }
+    else if (live.mode === 'real' && !live.stale){ txt = `即時狀態・最後更新 ${hhmm(live.updated)}${live.err ? '（暫時讀不到，稍後重試）' : ''}`; cls = 'real'; }
+    else if (live.mode === 'real' && live.stale){ txt = `狀態資料已超過 ${STALE_MIN} 分鐘沒更新（最後 ${hhmm(live.updated)}），先顯示座位`; cls = 'off'; }
+    else if (location.protocol === 'file:'){ txt = '本機開啟：不讀即時狀態，顯示座位'; cls = 'off'; }
+    else { txt = '尚未連上狀態資料，顯示座位'; cls = 'off'; }
+    liveEl.textContent = txt; liveEl.className = 'live ' + cls;
+  }
+  function applyStatus(data){
+    if (!data || typeof data !== 'object' || !data.members || typeof data.members !== 'object') throw new Error('bad status');
+    const upd = data.updated ? new Date(data.updated) : null;
+    live.updated = data.updated || null; live.err = null;
+    live.stale = !upd || isNaN(upd) || (Date.now() - upd.getTime()) / 60000 > STALE_MIN;
+    const got = {};
+    for (const k in data.members){ const id = NAME2ID[String(k).toLowerCase()] || NAME2ID[k]; const v = data.members[k];
+      if (id && id !== 'jiaqing' && v && STATE_TXT[v.state]) got[id] = v; }
+    live.mode = Object.keys(got).length ? 'real' : 'none';
+    TRACKED.forEach(id => { const v = !live.stale && got[id]; setState(id, v ? v.state : null, v ? v.since : null); });
+    renderLive();
+  }
+  async function poll(){
+    if (DEMO || location.protocol === 'file:') return;
+    try {
+      const r = await fetch('status.json?t=' + Date.now(), { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      applyStatus(await r.json());
+    } catch (e){
+      live.err = String(e && e.message || e);
+      if (live.mode !== 'real') clearStates();   // 從來沒讀到：大家坐著，不做假動作
+      renderLive();
+    }
+  }
+
+  // ---------- 示範模式：照固定劇本輪播（不是真實狀態） ----------
+  const DEMO_STEPS = [
+    {},
+    { gina:'resting', leo:'resting', andy:'resting' },
+    { gina:'resting', leo:'resting', tony:'resting', iris:'resting', kelly:'offline' },
+    { tony:'resting', iris:'resting', ray:'resting', kelly:'offline', max:'resting' },
+    { ray:'resting', chloe:'resting', andy:'resting' },
+  ];
+  const demoSince = {};
+  function demoStep(n){
+    const step = DEMO_STEPS[n % DEMO_STEPS.length], now = new Date().toISOString();
+    live.mode = 'demo'; live.updated = now; live.stale = false;
+    TRACKED.forEach(id => { const st = step[id] || 'working'; if (!demoSince[id] || demoSince[id].st !== st) demoSince[id] = { st, at:now }; setState(id, st, demoSince[id].at); });
+    renderLive();
+  }
+
+  buildGrid();
+  renderLive();
+  let demoN = 0, demoTimer = null;
+  setTimeout(() => {
+    if (DEMO){ demoStep(demoN = 1); demoTimer = setInterval(() => demoStep(++demoN), 12000); }
+    else { poll(); setInterval(poll, POLL_MS); }
+  }, 1500);
+  const LIVE_API = {
+    applyStatus, demoStep:n => { if (demoTimer){ clearInterval(demoTimer); demoTimer = null; } demoStep(n); },
+    states:() => Object.fromEntries(TRACKED.map(id => [id, { state:seatObj[id].mv.state, hidden:seatObj[id].mv.hidden, pose:+seatObj[id].mv.pose.toFixed(2), path:seatObj[id].mv.path.length, spot:seatObj[id].mv.spot.key, pos:[+seatObj[id].walker.position.x.toFixed(2), +seatObj[id].walker.position.z.toFixed(2)] }])),
+    moving:() => TRACKED.some(id => seatObj[id].mv.path.length || (seatObj[id].mv.pose > 0 && seatObj[id].mv.pose < 1) || (seatObj[id].mv.spot.sit && seatObj[id].mv.pose > 0)),
+    live:() => ({ ...live, text:liveEl && liveEl.textContent }),
+    gridDump:() => ({ GN, CELL, H, grid:Array.from(grid).join(''), hard:Array.from(hard).join(''), comp:Array.from(comp).map(c => c === MAIN ? 1 : 0).join(''), rest:REST.map(r => [r.key, r.x, r.z]), door:[DOOR.x, DOOR.z], seats:TRACKED.map(id => [id, seatObj[id].seat.x, seatObj[id].seat.z]) }),
+    plan:(x0, z0, x1, z1) => planPath(x0, z0, x1, z1),
+    bigObs:() => { const out = [], bb = new THREE.Box3(); scene.traverse(o => { if (!o.isMesh) return; bb.setFromObject(o); const a = (bb.max.x - bb.min.x) * (bb.max.z - bb.min.z); if (a > 1.5 && bb.max.y >= 0.12 && bb.min.y <= 1.3) out.push([o.geometry.type, +a.toFixed(1), bb.min.toArray().map(v => +v.toFixed(2)), bb.max.toArray().map(v => +v.toFixed(2))]); }); return out; },
+    hardHits:(x0, z0, pts) => { const all = [[x0, z0], ...pts]; let bad = 0; for (let i = 1; i < all.length; i++) if (!hardLos(all[i-1], all[i])) bad++; return bad; },
+  };
+
   // ---------- 動畫 ----------
   const clock = new THREE.Clock(), tmp = new THREE.Vector3();
   let homeFixed = false;
   function tick(){
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+    stepWalkers(dt, t);
     for (const id in seatObj){
       const p = seatObj[id].person;
       p.userData.torso.scale.y = 1 + Math.sin(t * 1.6 + p.userData.ph) * 0.02;
@@ -5237,7 +5560,7 @@ void main() {
     if (!homeFixed && camera.aspect < 1){ homeFixed = true;   // 名牌第一次進 DOM 後用實際寬高重算手機預設視角
       HOME = homeView(camera.aspect); window.__office && (window.__office.home = HOME);
       if (fly){ fly.toP.copy(HOME.pos); fly.toT.copy(HOME.target); } }
-    for (const id in seatObj) seatObj[id].wrap.style.zIndex = String(Math.round((byId[id].x + byId[id].z + 20) * 10));
+    for (const id in seatObj){ const w = seatObj[id].walker.position; seatObj[id].wrap.style.zIndex = String(Math.round(((w.x + w.z) / K + 20) * 10)); }
     layoutTags(false);
     requestAnimationFrame(tick);
   }
@@ -5249,6 +5572,7 @@ void main() {
     const out = {}, rc = new THREE.Raycaster(), solid = [];
     scene.traverse(o => { if (o.isMesh && o.visible && o.material && !Array.isArray(o.material) && (o.material.visible === false || (o.material.transparent && o.material.opacity < 0.5))) return; if (o.isMesh) solid.push(o); });
     for (const id in seatObj){
+      if (!seatObj[id].person.visible){ out[id] = 'away'; continue; }
       const f = new THREE.Vector3(); seatObj[id].person.userData.head.getWorldPosition(f);
       // 臉前緣（朝鏡頭那側）
       const dirTo = f.clone().sub(camera.position).normalize();
@@ -5263,6 +5587,7 @@ void main() {
     const bad = [], v = new THREE.Vector3();
     const rects = Object.keys(seatObj).map(id => [id, seatObj[id].el.getBoundingClientRect()]);
     for (const id in seatObj){
+      if (!seatObj[id].person.visible) continue;
       seatObj[id].person.userData.head.getWorldPosition(v); const top = v.clone(); top.y += HEAD_R * F * MOBILE_BOOST; v.project(camera); top.project(camera);
       const [cx, cy] = toPx(v), [, ty] = toPx(top), r = (cy - ty) * 0.6;   // 臉的中心區（眼睛到嘴）
       rects.forEach(([tid, b]) => { if (b.left < cx + r && b.right > cx - r && b.top < cy + r && b.bottom > cy - r * 0.6) bad.push(tid + '→' + id); });
@@ -5276,7 +5601,7 @@ void main() {
       const got2 = pick((v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight);
       o[id] = got === id && got2 === id ? 'ok' : `face→${got} body→${got2}`; }
     return o; }
-  window.__office = { ready:true, boost:MOBILE_BOOST, tagFaceCheck, pickCheck, lanterns:lanternCount, plants:plantCount, members:M.length, home:HOME, full:FULL, zoomOf, camera, flying:() => !!fly, controls, faceCheck, layoutTags,
+  window.__office = { ...LIVE_API, ready:true, boost:MOBILE_BOOST, tagFaceCheck, pickCheck, lanterns:lanternCount, plants:plantCount, members:M.length, home:HOME, full:FULL, zoomOf, camera, flying:() => !!fly, controls, faceCheck, layoutTags,
     project:(id) => { const v = seatObj[id].head.clone().project(camera); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; },
     faceSize:(id) => { const s = seatObj[id], a = s.face.clone().project(camera), b = s.face.clone().add(new THREE.Vector3(0, HEAD_R * 2 * F * MOBILE_BOOST, 0)).project(camera); return Math.abs(a.y - b.y) / 2 * innerHeight; } };
 })();
