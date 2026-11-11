@@ -5462,10 +5462,18 @@ void main() {
     let txt = '', cls = '';
     if (live.mode === 'demo'){ txt = `示範模式（非真實狀態）・最後更新 ${hhmm(live.updated)}`; cls = 'demo'; }
     else if (live.mode === 'real' && !live.stale){ txt = `即時狀態・最後更新 ${hhmm(live.updated)}${live.err ? '（暫時讀不到，稍後重試）' : ''}`; cls = 'real'; }
-    else if (live.mode === 'real' && live.stale){ txt = `狀態資料已超過 ${STALE_MIN} 分鐘沒更新（最後 ${hhmm(live.updated)}），先顯示座位`; cls = 'off'; }
+    else if (live.mode === 'real' && live.stale){ txt = `依上班時間顯示（早九晚五、12–13 午休）・最後即時更新 ${hhmm(live.updated)}`; cls = 'real'; }
     else if (location.protocol === 'file:'){ txt = '本機開啟：不讀即時狀態，顯示座位'; cls = 'off'; }
     else { txt = '尚未連上狀態資料，顯示座位'; cls = 'off'; }
     liveEl.textContent = txt; liveEl.className = 'live ' + cls;
+  }
+  // 家慶指定的上班表（台北時間）：週一到五 09–12、13–17 上班，12–13 午休，其餘下班
+  function scheduleState(){
+    const t = new Date(Date.now() + 8*3600000); const wd = t.getUTCDay(), m = t.getUTCHours()*60 + t.getUTCMinutes();
+    if (wd === 0 || wd === 6) return 'offline';
+    if ((m >= 540 && m < 720) || (m >= 780 && m < 1020)) return 'working';
+    if (m >= 720 && m < 780) return 'resting';
+    return 'offline';
   }
   function applyStatus(data){
     if (!data || typeof data !== 'object' || !data.members || typeof data.members !== 'object') throw new Error('bad status');
@@ -5476,7 +5484,8 @@ void main() {
     for (const k in data.members){ const id = NAME2ID[String(k).toLowerCase()] || NAME2ID[k]; const v = data.members[k];
       if (id && id !== 'jiaqing' && v && STATE_TXT[v.state]) got[id] = v; }
     live.mode = Object.keys(got).length ? 'real' : 'none';
-    TRACKED.forEach(id => { const v = !live.stale && got[id]; setState(id, v ? v.state : null, v ? v.since : null); });
+    if (live.mode === 'real' && live.stale){ const d = scheduleState(); TRACKED.forEach(id => setState(id, d, null)); }
+    else TRACKED.forEach(id => { const v = !live.stale && got[id]; setState(id, v ? v.state : null, v ? v.since : null); });
     renderLive();
   }
   async function poll(){
