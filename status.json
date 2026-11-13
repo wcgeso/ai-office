@@ -1,41 +1,41 @@
 {
- "updated": "2026-11-13T16:28:05+08:00",
+ "updated": "2026-11-13T17:11:26+08:00",
  "members": {
   "chloe": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "tony": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "ray": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "kelly": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "gina": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "leo": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "andy": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "iris": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   },
   "max": {
-   "state": "working",
-   "since": "2026-11-13T13:05:30+08:00"
+   "state": "offline",
+   "since": "2026-11-13T17:11:26+08:00"
   }
  }
 }
